@@ -23,14 +23,35 @@
 
 
 #include <iostream>
-#include "max7219matrix.h"
+#include <stdlib.h>
+#include <string.h>
+#include "MAX7219matrix.h"
 #include "MAX7219fonts.h"
 #include "MAX7219constants.h"
 
 using namespace std;
 
 int main(int argc, char **argv)
-{
+{	
+	double speedVal = 3.0;
+	int pos = -1;
+	
+	for(int i=0;i<argc;i++) 
+	{
+		if(strcmp (argv[i],"-speed") == 0)
+		{
+			pos = i;
+			pos++;
+		}
+	}
+	
+	if(pos < argc)
+	{
+		speedVal = atof(argv[pos]);
+		if(speedVal < 0.5) speedVal = 0.5;
+		if(speedVal > 90.0) speedVal = 90.0;
+	}
+	
 	MAX7219Matrix m7219;
 	
 	m7219.init();
@@ -49,9 +70,9 @@ int main(int argc, char **argv)
 	
 	m7219.clearAll();
 	
-	char message[] = "Hallo Welt, und weiter geht's! Und noch ein Satz.";
+	char message[] = "    Hallo Welt, und weiter geht's! Und noch ein Satz.    ";
 	
-	m7219.scrollMessageHoriz(message, 0, 3.0, DIR_L, CP437_FONT, 0);
+	m7219.scrollMessageHoriz(message, 3, speedVal, DIR_L, CP437_FONT, 0);
 	
 	m7219.wait(10000);
 	

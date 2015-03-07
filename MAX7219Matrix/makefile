@@ -8,10 +8,10 @@ all: MAX7219matrix
 
 run: MAX7219matrix
 	ls -lh --color=auto
-	./matrixtest
+	./matrixtest -speed 3.0
 
-MAX7219matrix: max7219matrix.cpp matrixtest.cpp
-	$(CC) $(CFLAGS) max7219matrix.cpp matrixtest.cpp -o matrixtest
+MAX7219matrix: MAX7219matrix.cpp matrixtest.cpp
+	$(CC) $(CFLAGS) MAX7219matrix.cpp matrixtest.cpp -o matrixtest
 
 clean:
 	rm -rf *o matrixtest

@@ -21,6 +21,10 @@
  * 
  */
  
+/******************************************************************************
+ ***   Defines and Constants                                                ***
+ ******************************************************************************/
+
 // IMPORTANT: User must specify the number of MAX7219 matrices here:
 const int NUM_MATRICES = 8;   //Number of separate MAX7219 matrices
 

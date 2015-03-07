@@ -37,6 +37,7 @@ class MAX7219Matrix
 	int SpiFd; // File descriptor of spi port
 	char *TxBuffer;
 	char *RxBuffer;
+	char *PadString;
 	int TxBufferIndex;
 	int RxBufferIndex;
 		

@@ -20,7 +20,7 @@
  * 
  * 
  */
-#include "max7219matrix.h"
+#include "MAX7219matrix.h"
 #include "MAX7219constants.h"
 #include "MAX7219fonts.h"
 #include <iostream>
@@ -28,17 +28,19 @@
 #include <wiringPiSPI.h>
 #include <math.h>
 #include <string.h>
+#include <cstddef>
 
 
 using namespace std;
 
-/******************************************************************************
-***   Defines and Constants                                                 ***
-******************************************************************************/
-
 MAX7219Matrix::MAX7219Matrix() {
 	TxBuffer = new char[1024]; // Buffer for TxData
 	RxBuffer = new char[1024]; // Buffer for RxData
+	PadString = new char[NUM_MATRICES+1];
+	
+	for(int i=0;i<NUM_MATRICES;i++) PadString[i]=' ';
+	PadString[NUM_MATRICES] = '\0';
+	
 	
 	TxBufferIndex = 0;
 	RxBufferIndex = 0;
@@ -49,6 +51,7 @@ MAX7219Matrix::~MAX7219Matrix() {
 	
 	delete[] TxBuffer;
 	delete[] RxBuffer;
+	delete[] PadString;
 	
 	close(SpiFd); // Close SPI port
 }
@@ -163,7 +166,7 @@ void MAX7219Matrix::sendLetter(int matrix, char letter, const char font[256][8])
 }
 
 /*
- *  Subroutine used by scroll_message_horiz(), scrolls text once across the array, starting & ending with test on the array
+ *  Subroutine used by scroll_message_horiz(), scrolls text once across the array, starting & ending with text on the array
  */
 void MAX7219Matrix::scrollTextOnce(char *text, double delayTime, int direction, const char font[256][8]) {
 	
@@ -195,45 +198,33 @@ void MAX7219Matrix::scrollTextOnce(char *text, double delayTime, int direction, 
 		}
 	}
 	else if(direction == DIR_R) {
-		for(startChar = length-1; startChar > -1; startChar--) {
+		for(startChar = length; startChar > 0; startChar--) {
+			for(stage = 1; stage < 9; stage++) {
+				for(col = 0; col < 8; col++) {
+					for(matrix = NUM_MATRICES; matrix > 0; matrix--) {
+						if(col >= stage) {
+							columnDataChr = font[text[startChar + NUM_MATRICES - matrix] % 0x100][col-stage];
+						}
+						else {
+							columnDataChr = font[text[startChar + NUM_MATRICES - matrix -1] % 0x100][col-stage+8];
+						}
+						// Don't use SendData since this would set the values for each matrix individually
+						TxBuffer[TxBufferIndex] = col+1;
+						TxBufferIndex++;
+						TxBuffer[TxBufferIndex] = columnDataChr;
+						TxBufferIndex++;
+					}
+					flush();
+				}
+				delay(delayTime);
+			}
 		}
 	}
-	
-	/*
-	start_range = []
-    if direction == DIR_L:
-        start_range = range(length)
-    elif direction == DIR_R:
-        start_range = range(length-1, -1, -1)
-    for start_char in start_range:
-        for stage in range(8):
-            for col in range(8):
-                column_data = []
-                for matrix in range(NUM_MATRICES-1, -1, -1):
-                    if direction == DIR_L:
-                        this_char = font[ord(text[start_char + NUM_MATRICES - matrix - 1])]
-                        next_char = font[ord(text[start_char + NUM_MATRICES - matrix])]
-                        if col+stage < 8:
-                            column_data += [col+1, this_char[col+stage]]
-                        else:
-                            column_data += [col+1, next_char[col+stage-8]]
-                    elif direction == DIR_R:
-                        this_char = font[ord(text[start_char + NUM_MATRICES - matrix])]
-                        next_char = font[ord(text[start_char + NUM_MATRICES - matrix - 1])]
-                        if col >= stage:
-                            column_data += [col+1, this_char[col-stage]]
-                        else:
-                            column_data += [col+1, next_char[col-stage+8]]
-                send_bytes(column_data)
-            time.sleep(delay)
-	
-	*/
 }
 
 /*
  *  Scroll a text message across the array, for a specified (repeats) number of times
- *  repeats=0 gives indefinite scrolling until script is interrupted
- *  speed: 0-9 for practical purposes; speed does not have to integral
+ *  speed: xxx
  *  direction: DIR_L or DIR_R only; DIR_U & DIR_D will do nothing
  *  finish: True/False - True ensures array is clear at end, False ends with the last column of the last character of message
  *           still displayed on the array - this is included for completeness but rarely likely to be required in practice
@@ -242,43 +233,44 @@ void MAX7219Matrix::scrollTextOnce(char *text, double delayTime, int direction, 
  */
 void MAX7219Matrix::scrollMessageHoriz(char *message, int repeats, double speed, int direction, const char font[256][8], int finish) {
 	
-	double delayTime = pow(0.5, speed) * 1000.0;
-	scrollTextOnce(message, delayTime, direction, font);
+	// trim message
+	// this will modify the original string!
+	char *localMessage = message;
+	while(*localMessage == ' ' || *localMessage == '\t' || *localMessage == '\n')
+            localMessage++;
+
+    int locLen = strlen(localMessage);
+    while(locLen >= 0 && 
+            (localMessage[locLen - 1] == ' ' || localMessage[locLen - 1] == '\t' || localMessage[locLen - 1] == '\n'))
+    {
+            *(localMessage + locLen - 1) = '\0';
+            locLen--;
+    }
+    locLen = strlen(localMessage);
+    
+	if(locLen < 1) return;
 	
-	/*
-    if repeats <= 0:
-        indef = True
-    else:
-        indef = False
-        repeats = int(repeats)
-        
-    if len(message) < NUM_MATRICES:
-        message = trim(message)
-    # Repeatedly scroll the whole message (initially 'front-padded' with blanks) until the last char appears
-    scroll_text = ""
-    if direction == DIR_L:
-        scroll_text = PAD_STRING + message
-    elif direction == DIR_R:
-        scroll_text = message + PAD_STRING
-    counter = repeats
-    while (counter > 0) or indef:
-        scroll_text_once(scroll_text, delay, direction, font)
-        # After the first scroll, replace the blank 'front-padding' with the start of the same message
-        if counter == repeats:
-            if direction == DIR_L:
-                scroll_text = message[-NUM_MATRICES:] + message
-            elif direction == DIR_R:
-                scroll_text = message + message[:NUM_MATRICES]
-        counter -= 1
-    # To finish, 'end-pad' the message with blanks and scroll the end of the message off the array
-    if direction == DIR_L:
-        scroll_text = message[-NUM_MATRICES:] + PAD_STRING
-    elif direction == DIR_R:
-        scroll_text = PAD_STRING + message[:NUM_MATRICES]
-    scroll_text_once(scroll_text, delay, direction, font)
-    # Above algorithm leaves the last column of the last character displayed on the array, so optionally erase it
-    if finish:
-        clear_all()
-    */
+	char* paddedMessage = new char[locLen + NUM_MATRICES +1];
+	
+	double delayTime = pow(0.5, speed) * 1000.0;
+	if(direction == DIR_L) {
+		strcpy(paddedMessage,PadString);
+		strcat(paddedMessage,localMessage);
+	}
+	else if(direction == DIR_R) {
+		strcpy(paddedMessage,localMessage);
+		strcat(paddedMessage,PadString);
+		
+	}
+	
+	if(repeats <= 0) repeats = 1;
+	for(int i =0; i<repeats; i++)
+	    scrollTextOnce(paddedMessage, delayTime, direction, font);
+	
+	if(finish)
+	    clearAll();
+	
+	delete[] paddedMessage;
+	
 }
 
