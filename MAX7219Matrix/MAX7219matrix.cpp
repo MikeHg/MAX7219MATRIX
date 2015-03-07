@@ -36,10 +36,10 @@ using namespace std;
 MAX7219Matrix::MAX7219Matrix() {
 	TxBuffer = new char[1024]; // Buffer for TxData
 	RxBuffer = new char[1024]; // Buffer for RxData
-	PadString = new char[NUM_MATRICES+1];
+	PadString = new char[NUM_MATRICES];
 	
-	for(int i=0;i<NUM_MATRICES;i++) PadString[i]=' ';
-	PadString[NUM_MATRICES] = '\0';
+	for(int i=0;i<(NUM_MATRICES-1);i++) PadString[i]=' ';
+	PadString[NUM_MATRICES-1] = '\0';
 	
 	
 	TxBufferIndex = 0;
@@ -119,7 +119,6 @@ void MAX7219Matrix::init() {
     clearAll();                           // ensure the whole array is blank
     brightness(3);                        // set character intensity: range: 0..15
     SendData(MAX7219_REG_SHUTDOWN, 1);    // not in shutdown mode (i.e start it up)
-    //gfx_set_all(GFX_OFF);               // clear the graphics buffer
 }
 
 /*
@@ -224,14 +223,13 @@ void MAX7219Matrix::scrollTextOnce(char *text, double delayTime, int direction, 
 
 /*
  *  Scroll a text message across the array, for a specified (repeats) number of times
- *  speed: xxx
+ *  speed: accept values between 2.0 (very slow) and 9.0 (pretty fast)
  *  direction: DIR_L or DIR_R only; DIR_U & DIR_D will do nothing
- *  finish: True/False - True ensures array is clear at end, False ends with the last column of the last character of message
- *           still displayed on the array - this is included for completeness but rarely likely to be required in practice
  *  Scrolling starts with message off the RHS(DIR_L)/LHS(DIR_R) of array, and ends with message off the LHS/RHS
- *  If repeats>1, add space(s) at end of 'message' to separate the end of message & start of its repea
  */
-void MAX7219Matrix::scrollMessageHoriz(char *message, int repeats, double speed, int direction, const char font[256][8], int finish) {
+void MAX7219Matrix::scrollMessageHoriz(char *message, int repeats, double speed, int direction, const char font[256][8]) {
+	
+	if(direction != DIR_L && direction != DIR_R) return;
 	
 	// trim message
 	// this will modify the original string!
@@ -250,27 +248,105 @@ void MAX7219Matrix::scrollMessageHoriz(char *message, int repeats, double speed,
     
 	if(locLen < 1) return;
 	
-	char* paddedMessage = new char[locLen + NUM_MATRICES +1];
+	char* paddedMessage = new char[locLen + 2 * NUM_MATRICES];
+	
+	if(speed<2.0) speed = 2.0;
+	if(speed>9.0) speed = 9.0;
 	
 	double delayTime = pow(0.5, speed) * 1000.0;
-	if(direction == DIR_L) {
-		strcpy(paddedMessage,PadString);
-		strcat(paddedMessage,localMessage);
-	}
-	else if(direction == DIR_R) {
-		strcpy(paddedMessage,localMessage);
-		strcat(paddedMessage,PadString);
-		
-	}
+	strcpy(paddedMessage,PadString);
+	strcat(paddedMessage,localMessage);
+	strcat(paddedMessage,PadString);
 	
 	if(repeats <= 0) repeats = 1;
 	for(int i =0; i<repeats; i++)
 	    scrollTextOnce(paddedMessage, delayTime, direction, font);
 	
-	if(finish)
-	    clearAll();
+    clearAll();
 	
 	delete[] paddedMessage;
-	
 }
 
+/*
+ * Transitions vertically between two different (truncated if necessary) text messages
+ * speed: 0-9 for practical purposes; speed does not have to integral
+ * direction: DIR_U or DIR_D only; DIR_L & DIR_R will do nothing
+ */
+void MAX7219Matrix::scrollMessageVert(char *oldMessage, char *newMessage, double speed, int direction, const char font[256][8])
+{
+	if(speed<2.0) speed = 2.0;
+	if(speed>9.0) speed = 9.0;
+    double delayTime = pow(0.5, speed) * 1000.0;
+    
+    if(direction != DIR_U && direction != DIR_D) return;
+    
+    int stage, col, matrix, mLen,i;
+	char columnDataChr;
+	
+	char localOld[9], localNew[9];
+	strncpy(localOld, oldMessage, 8);
+	strncpy(localNew, newMessage, 8);
+	
+	mLen = strlen(localOld);
+	for(i=mLen;i<8;i++) {
+		localOld[i] = ' ';
+	}
+	localOld[8] = '\0';
+	
+	mLen = strlen(localNew);
+	for(i=mLen;i<8;i++) {
+		localNew[i] = ' ';
+	}
+	localNew[8] = '\0';
+	
+    for(stage = 0; stage <= 8; stage++) {
+		for(col = 0; col < 8; col++) {
+			for(matrix = NUM_MATRICES; matrix > 0; matrix--) {
+				
+				if(direction == DIR_D) {
+				    columnDataChr = font[localOld[NUM_MATRICES - matrix] % 0x100][col] << stage | font[localNew[NUM_MATRICES - matrix] % 0x100][col] >> (8 - stage);
+				}
+				else if(direction == DIR_U) {
+					columnDataChr = font[localOld[NUM_MATRICES - matrix] % 0x100][col] >> stage | font[localNew[NUM_MATRICES - matrix] % 0x100][col] << (8 - stage);
+				}
+								
+				// Don't use SendData since this would set the values for each matrix individually
+				TxBuffer[TxBufferIndex] = col+1;
+				TxBufferIndex++;
+				TxBuffer[TxBufferIndex] = columnDataChr;
+				TxBufferIndex++;
+			}
+			flush();
+		}
+		delay(delayTime);
+	}
+}
+
+void MAX7219Matrix::displayMessage(char *message, const char font[256][8])
+{
+	char localMessage[9];
+	strncpy(localMessage, message, 8);
+	
+	int col, matrix, mLen,i;
+	char columnDataChr;
+	
+	mLen = strlen(localMessage);
+	for(i=mLen;i<8;i++) {
+		localMessage[i] = ' ';
+	}
+	localMessage[8] = '\0';
+	
+	for(col = 0; col < 8; col++) {
+		for(matrix = NUM_MATRICES; matrix > 0; matrix--) {
+		    columnDataChr = font[localMessage[NUM_MATRICES - matrix] % 0x100][col];
+		    						
+			// Don't use SendData since this would set the values for each matrix individually
+			TxBuffer[TxBufferIndex] = col+1;
+			TxBufferIndex++;
+			TxBuffer[TxBufferIndex] = columnDataChr;
+			TxBufferIndex++;
+		}
+		flush();
+	}
+	
+}

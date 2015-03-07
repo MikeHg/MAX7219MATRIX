@@ -8,7 +8,7 @@ all: MAX7219matrix
 
 run: MAX7219matrix
 	ls -lh --color=auto
-	./matrixtest -speed 3.0
+	./matrixtest -speed 6.0
 
 MAX7219matrix: MAX7219matrix.cpp matrixtest.cpp
 	$(CC) $(CFLAGS) MAX7219matrix.cpp matrixtest.cpp -o matrixtest

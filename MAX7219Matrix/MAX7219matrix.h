@@ -31,7 +31,9 @@ class MAX7219Matrix
 	void clearAll();
 	void init();
 	void sendLetter(int, char, const char [256][8]);
-	void scrollMessageHoriz(char *, int, double, int, const char [256][8], int);
+	void scrollMessageHoriz(char *, int, double, int, const char [256][8]);
+	void scrollMessageVert(char *, char *, double, int, const char [256][8]);
+	void displayMessage(char *, const char [256][8]);
 	
 	private:
 	int SpiFd; // File descriptor of spi port
