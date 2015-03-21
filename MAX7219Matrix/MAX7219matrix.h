@@ -24,7 +24,11 @@
 class MAX7219Matrix
 {
 	public:
-	MAX7219Matrix();
+	static MAX7219Matrix& instance()
+    {
+       static MAX7219Matrix _instance;
+       return _instance;
+    }
 	~MAX7219Matrix();
 	void wait(long);
 	void brightness(char);
@@ -36,6 +40,9 @@ class MAX7219Matrix
 	void displayMessage(char *, const char [256][8]);
 	
 	private:
+	MAX7219Matrix();
+	MAX7219Matrix( const MAX7219Matrix& );
+    MAX7219Matrix & operator = (const MAX7219Matrix &);
 	int SpiFd; // File descriptor of spi port
 	char *TxBuffer;
 	char *RxBuffer;
@@ -47,5 +54,5 @@ class MAX7219Matrix
 	void SendData(char, char);
 	void flush();
 	void begin(int, int);
-	void scrollTextOnce(char *, double, int, const char [256][8]);	
+	void scrollTextOnce(char *, double, int, const char [256][8]);
 };

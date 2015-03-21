@@ -52,40 +52,39 @@ int main(int argc, char **argv)
 		if(speedVal > 90.0) speedVal = 90.0;
 	}
 	
-	MAX7219Matrix m7219;
-	m7219.init();
+	MAX7219Matrix::instance().init();
 	
-	m7219.sendLetter(0,'P',CP437_FONT);
-	m7219.sendLetter(1,'H',CP437_FONT);
-	m7219.sendLetter(2,'G',CP437_FONT);
-	m7219.sendLetter(3,'F',CP437_FONT);
-	m7219.sendLetter(4,'E',CP437_FONT);
-	m7219.sendLetter(5,'D',CP437_FONT);
-	m7219.sendLetter(6,'C',CP437_FONT);
-	m7219.sendLetter(7,'B',CP437_FONT);
-	m7219.sendLetter(8,'A',CP437_FONT);
-	m7219.sendLetter(9,'P',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(0,'P',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(1,'H',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(2,'G',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(3,'F',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(4,'E',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(5,'D',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(6,'C',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(7,'B',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(8,'A',CP437_FONT);
+	MAX7219Matrix::instance().sendLetter(9,'P',CP437_FONT);
 	
-	m7219.wait(2000);
+	MAX7219Matrix::instance().wait(2000);
 	
-	m7219.clearAll();
+	MAX7219Matrix::instance().clearAll();
 	
 	char message[] = "    Hallo Welt, und weiter geht's! Und noch ein Satz.    ";
 	
-	m7219.scrollMessageHoriz(message, 2, speedVal, DIR_L, CP437_FONT);
+	MAX7219Matrix::instance().scrollMessageHoriz(message, 2, speedVal, DIR_L, CP437_FONT);
 	
-	m7219.wait(2000);
+	MAX7219Matrix::instance().wait(2000);
 	
 	char oldMessage[] ="Hello";
 	char newMessage[] ="World";
 	
-	m7219.displayMessage(oldMessage, CP437_FONT);
-	m7219.wait(2000);
-	m7219.scrollMessageVert(oldMessage, newMessage, speedVal, DIR_U, CP437_FONT);
+	MAX7219Matrix::instance().displayMessage(oldMessage, CP437_FONT);
+	MAX7219Matrix::instance().wait(2000);
+	MAX7219Matrix::instance().scrollMessageVert(oldMessage, newMessage, speedVal, DIR_U, CP437_FONT);
 	
-	m7219.wait(5000);
+	MAX7219Matrix::instance().wait(5000);
 	
-	m7219.clearAll();
+	MAX7219Matrix::instance().clearAll();
 	
 	return 0;
 }
