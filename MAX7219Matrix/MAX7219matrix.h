@@ -38,6 +38,7 @@ class MAX7219Matrix
 	void scrollMessageHoriz(char *, int, double, int, const char [256][8]);
 	void scrollMessageVert(char *, char *, double, int, const char [256][8]);
 	void displayMessage(char *, const char [256][8]);
+	void reset();
 	
 	private:
 	MAX7219Matrix();

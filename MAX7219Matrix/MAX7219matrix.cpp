@@ -44,6 +44,8 @@ MAX7219Matrix::MAX7219Matrix() {
 	
 	TxBufferIndex = 0;
 	RxBufferIndex = 0;
+	
+	SpiFd = -1;
 }
 
 MAX7219Matrix::~MAX7219Matrix() {
@@ -53,7 +55,10 @@ MAX7219Matrix::~MAX7219Matrix() {
 	delete[] RxBuffer;
 	delete[] PadString;
 	
-	close(SpiFd); // Close SPI port
+	if(SpiFd != -1)
+	{
+	  close(SpiFd); // Close SPI port
+    }
 }
 
 /*
@@ -130,6 +135,18 @@ void MAX7219Matrix::begin(int channel, int speed)
 	{	// Open port for reading and writing
 		cout << "Failed to open SPI port " << channel << "! Please try with sudo" << endl;
 	}
+}
+
+/*
+ *     reset the SPI channel
+ */
+void MAX7219Matrix::reset()
+{
+   if (SpiFd != -1)
+   {
+	   close(SpiFd); // Close SPI port
+   }
+   MAX7219Matrix::init();
 }
 
 /*
